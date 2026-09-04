@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mi Malla · Ingeniería Civil Industrial</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0E1116">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  --bg:#0E1116;
+  --bg2:#151A21;
+  --card:#1B222B;
+  --card-border:#2A333F;
+  --ink:#E9EDF2;
+  --ink-dim:#8B97A6;
+  --accent:#3FA8A0;
+  --accent2:#D98B4A;
+  --danger:#C0574A;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:80px;
+}
+header{
+  position:sticky; top:0; z-index:20;
+  background:linear-gradient(180deg, var(--bg) 70%, transparent);
+  padding:18px 16px 10px;
+}
+h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
+.subtitle{color:var(--ink-dim); font-size:13px; margin:0;}
+.progress-wrap{
+  margin-top:14px; background:var(--card); border:1px solid var(--card-border);
+  border-radius:14px; padding:14px 16px;
+}
+.progress-row{display:flex; justify-content:space-between; align-items:baseline; font-size:13px; color:var(--ink-dim); margin-bottom:8px;}
+.progress-row b{color:var(--ink); font-size:15px;}
+.bar{height:8px; border-radius:999px; background:#0B0E12; overflow:hidden;}
+.bar-fill{height:100%; background:linear-gradient(90deg,var(--accent),#59C7BE); border-radius:999px; transition:width .4s ease;}
+.stats{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+.stat{
+  background:var(--bg2); border:1px solid var(--card-border); border-radius:10px;
+  padding:8px 10px; font-size:12px; color:var(--ink-dim); flex:1; min-width:90px;
+}
+.stat b{display:block; color:var(--ink); font-size:16px; font-weight:700; margin-bottom:2px;}
+
+.board{display:flex; gap:12px; overflow-x:auto; padding:14px 16px 10px; scroll-snap-type:x proximity;}
+.column{flex:0 0 148px; scroll-snap-align:start;}
+.col-head{
+  font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim);
+  padding:0 2px 8px; display:flex; justify-content:space-between; font-weight:700;
+}
+.col-head span.credits{color:var(--accent); font-weight:700;}
+.course{
+  background:var(--card); border:1px solid var(--card-border); border-radius:12px;
+  padding:10px 10px; margin-bottom:8px; cursor:pointer; transition:opacity .25s, transform .15s, border-color .2s;
+  position:relative;
+}
+.course:active{transform:scale(0.97);}
+.course .name{font-size:12.5px; font-weight:600; line-height:1.25; margin-bottom:6px;}
+.course .meta{font-size:10.5px; color:var(--ink-dim); display:flex; justify-content:space-between;}
+.course.locked{opacity:0.32;}
+.course.unlocked{opacity:0.62; border-color:var(--accent2);}
+.course.unlocked .meta{color:var(--accent2);}
+.course.done{opacity:1; border-color:var(--accent); background:#152420;}
+.course.done .name{text-decoration:line-through; color:var(--ink-dim);}
+.course.done::after{
+  content:"✓"; position:absolute; top:8px; right:8px; color:var(--accent); font-weight:900; font-size:13px;
+}
+
+.fab-bar{
+  position:fixed; bottom:0; left:0; right:0; z-index:30;
+  background:linear-gradient(180deg, transparent, var(--bg) 30%);
+  padding:14px 16px 18px; display:flex; gap:10px;
+}
+.fab-bar button{
+  flex:1; padding:14px; border-radius:14px; border:none; font-weight:700; font-size:14px; font-family:var(--font);
+}
+.btn-primary{background:var(--accent); color:#08201D;}
+.btn-secondary{background:var(--card); color:var(--ink); border:1px solid var(--card-border) !important;}
+
+.sheet-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:40; display:none;
+  align-items:flex-end; justify-content:center;
+}
+.sheet-backdrop.open{display:flex;}
+.sheet{
+  background:var(--bg2); width:100%; max-width:480px; border-radius:20px 20px 0 0;
+  padding:20px 18px 26px; max-height:82vh; overflow-y:auto;
+  border-top:1px solid var(--card-border);
+}
+.sheet h2{font-size:17px; margin:0 0 14px;}
+.sheet label{display:block; font-size:12px; color:var(--ink-dim); margin:12px 0 5px; font-weight:600;}
+.sheet input, .sheet select, .sheet textarea{
+  width:100%; background:var(--card); border:1px solid var(--card-border); color:var(--ink);
+  padding:11px 12px; border-radius:10px; font-size:14px; font-family:var(--font);
+}
+.sheet .row2{display:flex; gap:10px;}
+.sheet .row2 > div{flex:1;}
+.sheet-actions{display:flex; gap:10px; margin-top:18px;}
+.sheet-actions button{flex:1; padding:13px; border-radius:12px; border:none; font-weight:700; font-family:var(--font);}
+.chip-list{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+.chip{
+  background:var(--card); border:1px solid var(--card-border); border-radius:999px; padding:6px 10px; font-size:11.5px;
+  display:flex; align-items:center; gap:6px;
+}
+.chip button{background:none; border:none; color:var(--danger); font-weight:900; padding:0; font-size:13px;}
+
+.summary-pre{
+  white-space:pre-wrap; font-family:var(--mono); font-size:11.5px; background:#0B0E12;
+  border:1px solid var(--card-border); border-radius:12px; padding:14px; line-height:1.5; color:#B9E4DE;
+}
+.install-note{font-size:11.5px; color:var(--ink-dim); margin-top:10px; line-height:1.4;}
+.legend{display:flex; gap:14px; padding:0 16px 6px; font-size:11px; color:var(--ink-dim);}
+.legend span{display:flex; align-items:center; gap:5px;}
+.dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+.dot.done{background:var(--accent);}
+.dot.unlocked{background:var(--accent2);}
+.dot.locked{background:#42505F;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mi Malla</h1>
+  <p class="subtitle">Ingeniería Civil Industrial · UDP</p>
+  <div class="progress-wrap">
+    <div class="progress-row"><span>Créditos aprobados</span><b id="creditProgressText">0 / 0</b></div>
+    <div class="bar"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+    <div class="stats">
+      <div class="stat"><b id="statSemActual">–</b>Semestre estimado</div>
+      <div class="stat"><b id="statAtraso">–</b>Semestres de atraso</div>
+      <div class="stat"><b id="statDesbloq">–</b>Ramos desbloqueados</div>
+    </div>
+  </div>
+</header>
+
+<div class="legend">
+  <span><i class="dot done"></i>Completado</span>
+  <span><i class="dot unlocked"></i>Disponible</span>
+  <span><i class="dot locked"></i>Bloqueado</span>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="fab-bar">
+  <button class="btn-secondary" id="btnConfig">⚙ Reglas</button>
+  <button class="btn-secondary" id="btnAddCourse">+ Ramo</button>
+  <button class="btn-primary" id="btnResumen">Generar resumen ↓</button>
+</div>
+
+<!-- Sheet: editar ramo -->
+<div class="sheet-backdrop" id="courseSheet">
+  <div class="sheet">
+    <h2 id="courseSheetTitle">Editar ramo</h2>
+    <label>Nombre</label>
+    <input id="f_name" type="text">
+    <div class="row2">
+      <div>
+        <label>Semestre</label>
+        <input id="f_sem" type="number" min="1" max="12">
+      </div>
+      <div>
+        <label>Créditos</label>
+        <input id="f_credits" type="number" min="1">
+      </div>
+    </div>
+    <label>Créditos mínimos acumulados requeridos (opcional, ej. prácticas)</label>
+    <input id="f_minCredits" type="number" min="0" placeholder="0">
+    <label>Prerrequisitos (ramos)</label>
+    <div class="chip-list" id="prereqChips"></div>
+    <select id="f_prereqSelect" style="margin-top:8px;"></select>
+    <label style="margin-top:14px; display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="f_done" style="width:auto;"> Ya aprobado
+    </label>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="btnDeleteCourse" style="color:var(--danger);">Eliminar</button>
+      <button class="btn-secondary" id="btnCancelCourse">Cancelar</button>
+      <button class="btn-primary" id="btnSaveCourse">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: reglas -->
+<div class="sheet-backdrop" id="configSheet">
+  <div class="sheet">
+    <h2>Reglas de la carrera</h2>
+    <label>Límite de créditos por semestre (normal)</label>
+    <input id="cfg_limit" type="number">
+    <label>Créditos extra permitidos por papeleta</label>
+    <input id="cfg_extra" type="number">
+    <p class="install-note">Con papeleta el tope pasa a ser límite + extra. Ajusta estos valores según lo que indique tu escuela.</p>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="btnCancelConfig">Cancelar</button>
+      <button class="btn-primary" id="btnSaveConfig">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: resumen -->
+<div class="sheet-backdrop" id="summarySheet">
+  <div class="sheet">
+    <h2>Resumen para IA</h2>
+    <div class="summary-pre" id="summaryText"></div>
+    <p class="install-note">Copia este texto y pégalo en tu conversación con una IA (o mándamelo a mí) para que te diga en qué semestre vas, cuántos vas atrasado y qué ramos tomar para adelantar.</p>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="btnDownloadSummary">Descargar .txt</button>
+      <button class="btn-primary" id="btnCopySummary">Copiar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: reset -->
+<div class="sheet-backdrop" id="resetSheet">
+  <div class="sheet">
+    <h2>Restaurar malla base</h2>
+    <p class="install-note">Esto borra todos tus cambios (ramos editados y marcados como aprobados) y vuelve a cargar la malla original de Ingeniería Civil Industrial.</p>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="btnCancelReset">Cancelar</button>
+      <button class="btn-primary" id="btnConfirmReset" style="background:var(--danger); color:#fff;">Restaurar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'malla-icivil-udp-v2';
+const CONFIG_KEY = 'malla-config-v2';
+
+let courses = [];
+let config = { limit: 30, extra: 6 };
+let editingId = null;
+
+// ---- Malla real: Ingeniería Civil Industrial, UDP (datos entregados por el alumno) ----
+// [semestre, nombre, créditos, [prerrequisitos por nombre], minCreditosAcumulados]
+const seed = [
+  [1,"Álgebra y Geometría",7,[],0],
+  [1,"Cálculo I",7,[],0],
+  [1,"Química",6,[],0],
+  [1,"Programación",6,[],0],
+  [1,"Comunicación para la Ingeniería",5,[],0],
+
+  [2,"Álgebra Lineal",6,["Álgebra y Geometría"],0],
+  [2,"Cálculo II",6,["Cálculo I"],0],
+  [2,"Mecánica",7,["Cálculo I"],0],
+  [2,"Programación Avanzada",6,["Programación"],0],
+  [2,"Curso de Formación General",5,[],0],
+
+  [3,"Ecuaciones Diferenciales",6,["Álgebra Lineal","Cálculo II"],0],
+  [3,"Cálculo III",6,["Cálculo II"],0],
+  [3,"Calor y Ondas",7,["Cálculo II","Mecánica"],0],
+  [3,"Contabilidad y Costos",6,["Cálculo I"],0],
+  [3,"Curso de Formación General",5,[],0],
+  [3,"Inglés I",5,[],0],
+
+  [4,"Probabilidades y Estadísticas",6,["Cálculo II"],0],
+  [4,"Estática",6,["Mecánica"],0],
+  [4,"Electricidad y Magnetismo",7,["Ecuaciones Diferenciales","Cálculo III"],0],
+  [4,"Introducción a la Economía",6,["Cálculo II"],0],
+  [4,"Curso de Formación General",5,[],0],
+  [4,"Inglés II",5,["Inglés I"],0],
+  [4,"Práctica Profesional I",7,[],131],
+
+  [5,"Inferencia Estadística",6,["Probabilidades y Estadísticas"],0],
+  [5,"Mecánica de Fluidos",6,["Estática","Electricidad y Magnetismo"],0],
+  [5,"Optimización",6,["Álgebra Lineal","Cálculo III"],0],
+  [5,"Teoría Organizacional",6,["Comunicación para la Ingeniería"],0],
+  [5,"Curso de Formación General",5,[],0],
+  [5,"Inglés III",5,["Inglés II"],0],
+
+  [6,"Bases de Datos",6,["Programación Avanzada"],0],
+  [6,"Termodinámica",6,["Calor y Ondas","Mecánica de Fluidos"],0],
+  [6,"Modelos Estocásticos",6,["Probabilidades y Estadísticas","Optimización"],0],
+  [6,"Microeconomía",6,["Introducción a la Economía","Optimización"],0],
+  [6,"Ingeniería Económica",6,["Contabilidad y Costos"],0],
+
+  [7,"Econometría",6,["Inferencia Estadística","Microeconomía"],0],
+  [7,"Proyectos Energéticos",6,["Termodinámica"],0],
+  [7,"Producción",6,["Optimización"],0],
+  [7,"Marketing",6,["Introducción a la Economía","Teoría Organizacional"],0],
+  [7,"Finanzas",6,["Ingeniería Económica"],0],
+
+  [8,"Data Science",6,["Inferencia Estadística","Optimización"],0],
+  [8,"Simulación",6,["Modelos Estocásticos"],0],
+  [8,"Logística",6,["Producción"],0],
+  [8,"Gestión Estratégica",6,["Marketing"],0],
+  [8,"Evaluación de Proyectos",6,["Finanzas"],0],
+  [8,"Práctica Profesional II",6,["Práctica Profesional I"],256],
+
+  [9,"Electivo Profesional",6,[],0],
+  [9,"Electivo Profesional",6,[],0],
+  [9,"Electivo Profesional",6,[],0],
+  [9,"Electivo Profesional",6,[],0],
+  [9,"Liderazgo y Emprendimiento",6,["Gestión Estratégica","Evaluación de Proyectos"],0],
+
+  [10,"Taller de Ingeniería Industrial",6,["Evaluación de Proyectos"],0],
+  [10,"Electivo Profesional",6,[],0],
+  [10,"Electivo Profesional",6,[],0],
+  [10,"Electivo Profesional",6,[],0],
+  [10,"Electivo Profesional",6,[],0],
+
+  [11,"Actividad de Titulación",30,["Práctica Profesional I","Práctica Profesional II"],330],
+];
+
+function seedCourses(){
+  const list = seed.map((s,i)=>({ id:'c'+i, name:s[1], sem:s[0], credits:s[2], prereqNames:s[3], minCredits:s[4]||0, done:false }));
+  // resolver nombres de prerrequisito a ids (primer match por nombre)
+  list.forEach(c=>{
+    c.prereqs = c.prereqNames.map(n=>{
+      const found = list.find(x=>x.name===n);
+      return found ? found.id : null;
+    }).filter(Boolean);
+    delete c.prereqNames;
+  });
+  return list;
+}
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    courses = raw ? JSON.parse(raw) : seedCourses();
+    if(!raw) saveCourses();
+  }catch(e){ courses = seedCourses(); }
+  try{
+    const raw2 = localStorage.getItem(CONFIG_KEY);
+    if(raw2) config = JSON.parse(raw2); else saveConfig();
+  }catch(e){ /* keep defaults */ }
+  render();
+}
+function saveCourses(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); }catch(e){} }
+function saveConfig(){ try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); }catch(e){} }
+
+function doneCreditsTotal(){
+  return courses.filter(c=>c.done).reduce((a,c)=>a+c.credits,0);
+}
+
+function isUnlocked(course){
+  if(course.done) return true;
+  const prereqsOk = !course.prereqs.length || course.prereqs.every(pid=>{
+    const p = courses.find(c=>c.id===pid);
+    return p && p.done;
+  });
+  const creditsOk = !course.minCredits || doneCreditsTotal() >= course.minCredits;
+  return prereqsOk && creditsOk;
+}
+
+function render(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  const sems = [...new Set(courses.map(c=>c.sem))].sort((a,b)=>a-b);
+  let totalCredits=0, doneCredits=0, unlockedCount=0;
+  sems.forEach(sem=>{
+    const col = document.createElement('div');
+    col.className='column';
+    const items = courses.filter(c=>c.sem===sem);
+    const semCredits = items.reduce((a,c)=>a+c.credits,0);
+    col.innerHTML = `<div class="col-head"><span>Sem ${sem}</span><span class="credits">${semCredits}c</span></div>`;
+    items.forEach(c=>{
+      totalCredits += c.credits;
+      if(c.done) doneCredits += c.credits;
+      const unlocked = isUnlocked(c);
+      if(unlocked && !c.done) unlockedCount++;
+      const div = document.createElement('div');
+      div.className = 'course ' + (c.done ? 'done' : unlocked ? 'unlocked' : 'locked');
+      const extra = c.minCredits ? `min ${c.minCredits}cr` : (c.prereqs.length? '⛓'+c.prereqs.length : '');
+      div.innerHTML = `<div class="name">${c.name}</div><div class="meta"><span>${c.credits} cr</span><span>${extra}</span></div>`;
+      div.addEventListener('click', ()=> openCourseSheet(c.id));
+      col.appendChild(div);
+    });
+    board.appendChild(col);
+  });
+
+  document.getElementById('creditProgressText').textContent = `${doneCredits} / ${totalCredits}`;
+  document.getElementById('barFill').style.width = totalCredits? (doneCredits/totalCredits*100)+'%' : '0%';
+  document.getElementById('statDesbloq').textContent = unlockedCount;
+
+  const maxSem = Math.max(...sems);
+  const creditsPerSemAvg = totalCredits / maxSem;
+  const semEstimadoPorCreditos = creditsPerSemAvg? (doneCredits / creditsPerSemAvg) : 0;
+  let primerSemPendiente = maxSem;
+  for(const s of sems){
+    const items = courses.filter(c=>c.sem===s);
+    if(items.some(c=>!c.done)){ primerSemPendiente = s; break; }
+  }
+  document.getElementById('statSemActual').textContent = 'S' + primerSemPendiente;
+  const atraso = Math.max(0, Math.round((primerSemPendiente - 1) - semEstimadoPorCreditos));
+  document.getElementById('statAtraso').textContent = atraso;
+}
+
+// ---- Course sheet ----
+function openCourseSheet(id){
+  editingId = id || null;
+  const c = id ? courses.find(x=>x.id===id) : { name:'', sem:1, credits:6, prereqs:[], minCredits:0, done:false };
+  document.getElementById('courseSheetTitle').textContent = id ? 'Editar ramo' : 'Nuevo ramo';
+  document.getElementById('f_name').value = c.name;
+  document.getElementById('f_sem').value = c.sem;
+  document.getElementById('f_credits').value = c.credits;
+  document.getElementById('f_minCredits').value = c.minCredits || '';
+  document.getElementById('f_done').checked = c.done;
+  document.getElementById('btnDeleteCourse').style.display = id ? '' : 'none';
+  renderPrereqUI(c);
+  document.getElementById('courseSheet').classList.add('open');
+}
+let tempPrereqs = [];
+function renderPrereqUI(c){
+  tempPrereqs = [...c.prereqs];
+  const chips = document.getElementById('prereqChips');
+  const select = document.getElementById('f_prereqSelect');
+  function draw(){
+    chips.innerHTML='';
+    tempPrereqs.forEach(pid=>{
+      const p = courses.find(x=>x.id===pid);
+      if(!p) return;
+      const chip = document.createElement('div');
+      chip.className='chip';
+      chip.innerHTML = `<span>${p.name}</span><button>×</button>`;
+      chip.querySelector('button').onclick = ()=>{ tempPrereqs = tempPrereqs.filter(x=>x!==pid); draw(); };
+      chips.appendChild(chip);
+    });
+  }
+  draw();
+  select.innerHTML = '<option value="">+ agregar prerrequisito…</option>' +
+    courses.filter(x=>x.id!==editingId).map(x=>`<option value="${x.id}">${x.name} (S${x.sem})</option>`).join('');
+  select.onchange = ()=>{
+    if(select.value && !tempPrereqs.includes(select.value)){ tempPrereqs.push(select.value); draw(); }
+    select.value='';
+  };
+}
+document.getElementById('btnCancelCourse').onclick = ()=> document.getElementById('courseSheet').classList.remove('open');
+document.getElementById('btnAddCourse').onclick = ()=> openCourseSheet(null);
+document.getElementById('btnDeleteCourse').onclick = ()=>{
+  if(!editingId) return;
+  courses = courses.filter(c=>c.id!==editingId);
+  courses.forEach(c=> c.prereqs = c.prereqs.filter(p=>p!==editingId));
+  saveCourses();
+  document.getElementById('courseSheet').classList.remove('open');
+  render();
+};
+document.getElementById('btnSaveCourse').onclick = ()=>{
+  const name = document.getElementById('f_name').value.trim();
+  if(!name) return;
+  const sem = parseInt(document.getElementById('f_sem').value)||1;
+  const credits = parseInt(document.getElementById('f_credits').value)||0;
+  const minCredits = parseInt(document.getElementById('f_minCredits').value)||0;
+  const done = document.getElementById('f_done').checked;
+  if(editingId){
+    const c = courses.find(x=>x.id===editingId);
+    Object.assign(c, {name, sem, credits, minCredits, done, prereqs:tempPrereqs});
+  } else {
+    courses.push({ id:'c'+Date.now(), name, sem, credits, minCredits, done, prereqs:tempPrereqs });
+  }
+  saveCourses();
+  document.getElementById('courseSheet').classList.remove('open');
+  render();
+};
+
+// ---- Config sheet ----
+document.getElementById('btnConfig').onclick = ()=>{
+  document.getElementById('cfg_limit').value = config.limit;
+  document.getElementById('cfg_extra').value = config.extra;
+  document.getElementById('configSheet').classList.add('open');
+};
+document.getElementById('btnCancelConfig').onclick = ()=> document.getElementById('configSheet').classList.remove('open');
+document.getElementById('btnSaveConfig').onclick = ()=>{
+  config.limit = parseInt(document.getElementById('cfg_limit').value)||30;
+  config.extra = parseInt(document.getElementById('cfg_extra').value)||0;
+  saveConfig();
+  document.getElementById('configSheet').classList.remove('open');
+};
+
+// ---- Reset ----
+document.getElementById('btnCancelReset').onclick = ()=> document.getElementById('resetSheet').classList.remove('open');
+document.getElementById('btnConfirmReset').onclick = ()=>{
+  courses = seedCourses();
+  saveCourses();
+  document.getElementById('resetSheet').classList.remove('open');
+  render();
+};
+
+// ---- Resumen ----
+function buildSummary(){
+  const sems = [...new Set(courses.map(c=>c.sem))].sort((a,b)=>a-b);
+  const totalCredits = courses.reduce((a,c)=>a+c.credits,0);
+  const doneCredits = doneCreditsTotal();
+  const done = courses.filter(c=>c.done);
+  const pending = courses.filter(c=>!c.done);
+  const unlocked = pending.filter(isUnlocked);
+  const locked = pending.filter(c=>!isUnlocked(c));
+
+  let out = '';
+  out += `RESUMEN DE MALLA — Ingeniería Civil Industrial (UDP)\n`;
+  out += `Generado: ${new Date().toLocaleString('es-CL')}\n`;
+  out += `=`.repeat(50) + '\n\n';
+  out += `REGLAS DE INSCRIPCIÓN\n`;
+  out += `- Límite normal de créditos por semestre: ${config.limit}\n`;
+  out += `- Créditos extra permitidos con papeleta: ${config.extra}\n`;
+  out += `- Tope máximo posible en un semestre (con papeleta): ${config.limit + config.extra}\n\n`;
+
+  out += `PROGRESO GENERAL\n`;
+  out += `- Créditos totales de la carrera: ${totalCredits}\n`;
+  out += `- Créditos aprobados: ${doneCredits} (${totalCredits? ((doneCredits/totalCredits)*100).toFixed(1):0}%)\n`;
+  out += `- Ramos aprobados: ${done.length} / ${courses.length}\n\n`;
+
+  out += `MALLA COMPLETA POR SEMESTRE (marca [x]=aprobado, [ ]=pendiente)\n`;
+  sems.forEach(s=>{
+    const items = courses.filter(c=>c.sem===s);
+    out += `\nSemestre ${s}:\n`;
+    items.forEach(c=>{
+      const mark = c.done ? '[x]' : '[ ]';
+      const reqs = [];
+      if(c.prereqs.length) reqs.push('ramos: ' + c.prereqs.map(pid=>{const p=courses.find(x=>x.id===pid); return p?p.name:'?';}).join(', '));
+      if(c.minCredits) reqs.push(`min ${c.minCredits} créditos acumulados`);
+      const pr = reqs.length ? ` | requiere: ${reqs.join(' + ')}` : '';
+      out += `  ${mark} ${c.name} — ${c.credits} cr${pr}\n`;
+    });
+  });
+
+  out += `\nRAMOS APROBADOS (${done.length})\n`;
+  out += done.length ? done.map(c=>`- ${c.name} (S${c.sem}, ${c.credits}cr)`).join('\n') : '(ninguno registrado aún)';
+
+  out += `\n\nRAMOS DISPONIBLES AHORA — requisitos cumplidos (${unlocked.length})\n`;
+  out += unlocked.length ? unlocked.map(c=>`- ${c.name} (malla S${c.sem}, ${c.credits}cr)`).join('\n') : '(ninguno)';
+
+  out += `\n\nRAMOS AÚN BLOQUEADOS (${locked.length})\n`;
+  out += locked.length ? locked.map(c=>{
+    const missing = [];
+    const missingCourses = c.prereqs.filter(pid=>{const p=courses.find(x=>x.id===pid); return !(p&&p.done);}).map(pid=>{const p=courses.find(x=>x.id===pid); return p?p.name:'?';});
+    if(missingCourses.length) missing.push(missingCourses.join(', '));
+    if(c.minCredits && doneCredits < c.minCredits) missing.push(`${c.minCredits - doneCredits} créditos más`);
+    return `- ${c.name} (malla S${c.sem}, ${c.credits}cr) — falta: ${missing.join(' + ')}`;
+  }).join('\n') : '(ninguno)';
+
+  out += `\n\nPREGUNTA PARA LA IA\n`;
+  out += `Con esta información: ¿en qué semestre de la carrera voy realmente ubicado según lo aprobado, cuántos semestres llevo de atraso respecto a la malla ideal, y qué combinación de ramos disponibles ahora me conviene tomar el próximo semestre para adelantar lo más posible sin superar el límite de créditos (considerando que puedo pedir ${config.extra} créditos extra por papeleta)?\n`;
+
+  return out;
+}
+
+document.getElementById('btnResumen').onclick = ()=>{
+  document.getElementById('summaryText').textContent = buildSummary();
+  document.getElementById('summarySheet').classList.add('open');
+};
+document.getElementById('btnCopySummary').onclick = async ()=>{
+  const text = document.getElementById('summaryText').textContent;
+  try{ await navigator.clipboard.writeText(text); const b=document.getElementById('btnCopySummary'); const old=b.textContent; b.textContent='Copiado ✓'; setTimeout(()=>b.textContent=old,1200); }
+  catch(e){ alert('No se pudo copiar automáticamente. Selecciona el texto manualmente.'); }
+};
+document.getElementById('btnDownloadSummary').onclick = ()=>{
+  const text = document.getElementById('summaryText').textContent;
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'resumen-malla.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// long-press en el header para restaurar malla (evita reset accidental)
+let pressTimer;
+document.querySelector('header h1').addEventListener('touchstart', ()=>{
+  pressTimer = setTimeout(()=> document.getElementById('resetSheet').classList.add('open'), 900);
+});
+document.querySelector('header h1').addEventListener('touchend', ()=> clearTimeout(pressTimer));
+
+// cerrar sheets al tocar backdrop
+['courseSheet','configSheet','summarySheet','resetSheet'].forEach(id=>{
+  document.getElementById(id).addEventListener('click', (e)=>{
+    if(e.target.id===id) e.target.classList.remove('open');
+  });
+});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
