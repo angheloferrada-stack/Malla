@@ -20,6 +20,7 @@
   --accent:#3FA8A0;
   --accent2:#D98B4A;
   --progress:#5B8DEF;
+  --future:#B07CE8;
   --danger:#C0574A;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -80,6 +81,8 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 .course.locked{opacity:0.32;}
 .course.unlocked{opacity:0.62; border-color:var(--accent2);}
 .course.unlocked .meta{color:var(--accent2);}
+.course.future-unlocked{opacity:0.5; border-color:var(--future); border-style:dashed;}
+.course.future-unlocked .meta{color:var(--future);}
 .course.in-progress{opacity:0.9; border-color:var(--progress); background:#161E2C;}
 .course.in-progress .meta{color:var(--progress);}
 .course.in-progress::after{
@@ -150,6 +153,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 .dot.unlocked{background:var(--accent2);}
 .dot.locked{background:#42505F;}
 .dot.progress{background:var(--progress);}
+.dot.future{background:var(--future);}
 .sync-row{display:flex; gap:8px; align-items:center;}
 .sync-row input{flex:1;}
 .sync-status{font-size:11.5px; margin-top:8px; color:var(--ink-dim);}
@@ -183,6 +187,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
   <span><i class="dot done"></i>Completado</span>
   <span><i class="dot progress"></i>Cursando</span>
   <span><i class="dot unlocked"></i>Disponible</span>
+  <span><i class="dot future"></i>Se desbloquea si apruebas lo que cursas</span>
   <span><i class="dot locked"></i>Bloqueado</span>
 </div>
 
@@ -482,6 +487,19 @@ function isUnlocked(course){
   return prereqsOk && creditsOk;
 }
 
+function doneOrInProgressCreditsTotal(){
+  return courses.filter(c=>c.status==='done'||c.status==='inProgress').reduce((a,c)=>a+c.credits,0);
+}
+// ¿Se desbloquearía este ramo si apruebo todo lo que estoy cursando ahora?
+function isUnlockedIfPassCurrent(course){
+  const prereqsOk = !course.prereqs.length || course.prereqs.every(pid=>{
+    const p = courses.find(c=>c.id===pid);
+    return p && (p.status==='done' || p.status==='inProgress');
+  });
+  const creditsOk = !course.minCredits || doneOrInProgressCreditsTotal() >= course.minCredits;
+  return prereqsOk && creditsOk;
+}
+
 function idealSemesterNow(){
   const entryYear = parseInt(config.entryYear) || new Date().getFullYear();
   const now = new Date();
@@ -531,8 +549,9 @@ function render(){
       if(c.status==='done') doneCredits += c.credits;
       const unlocked = isUnlocked(c);
       if(unlocked && c.status==='pending') unlockedCount++;
+      const willUnlock = !unlocked && c.status==='pending' && isUnlockedIfPassCurrent(c);
       const div = document.createElement('div');
-      const cls = c.status==='done' ? 'done' : c.status==='inProgress' ? 'in-progress' : unlocked ? 'unlocked' : 'locked';
+      const cls = c.status==='done' ? 'done' : c.status==='inProgress' ? 'in-progress' : unlocked ? 'unlocked' : willUnlock ? 'future-unlocked' : 'locked';
       div.className = 'course ' + cls;
       const extra = c.minCredits ? `min ${c.minCredits}cr` : (c.prereqs.length? '⛓'+c.prereqs.length : '');
       div.innerHTML = `<div class="name">${c.name}</div><div class="meta"><span>${c.credits} cr</span><span>${extra}</span></div>`;
