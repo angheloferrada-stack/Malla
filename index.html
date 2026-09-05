@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#0E1116;
@@ -247,16 +249,13 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
     <p class="install-note">El semestre "según ingreso" se calcula solo, contando desde marzo de tu año de ingreso (2 semestres por año).</p>
 
     <h3>Sincronizar entre celular y computador</h3>
-    <p class="install-note">Crea un código de sincronización en un dispositivo y pégalo en los demás para que compartan la misma información automáticamente. Usa el servicio gratuito jsonbin.io.</p>
-    <label>Clave de API (jsonbin.io Master Key)</label>
-    <input id="cfg_syncKey" type="text" placeholder="Pega aquí tu X-Master-Key">
-    <label>Código de sincronización</label>
-    <div class="sync-row">
-      <input id="cfg_syncBin" type="text" placeholder="Se genera automáticamente">
-      <button class="btn-secondary" id="btnCreateSyncCode" style="flex:0 0 auto; padding:11px 14px;">Crear</button>
-    </div>
+    <p class="install-note">Usa tu proyecto de Firebase (el mismo que ya tienes) para guardar la malla en la nube y que se vea igual en todos tus dispositivos, en tiempo real.</p>
+    <label>Configuración de Firebase (pega el objeto firebaseConfig completo)</label>
+    <textarea id="cfg_fbConfig" rows="6" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...", ...}'></textarea>
+    <label>Código de tu malla</label>
+    <input id="cfg_fbCode" type="text" placeholder="ej: anghelo-malla">
+    <p class="install-note">Escribe el mismo código en todos tus dispositivos (celular, compu) para que compartan los mismos datos. Puede ser cualquier palabra, tú la inventas.</p>
     <div class="sync-status" id="syncStatusMsg"></div>
-    <p class="install-note">1) En tu primer dispositivo, pega tu clave y toca "Crear" para generar el código.<br>2) Copia ese código y, en el otro dispositivo, pega la misma clave y el mismo código en este mismo panel, luego guarda.<br>Consigue tu clave gratis creando una cuenta en <b>jsonbin.io</b> → API Keys → "Create Access Key" (marca los permisos de Bins: create/read/update).</p>
     <div class="sheet-actions">
       <button class="btn-secondary" id="btnCancelConfig">Cancelar</button>
       <button class="btn-primary" id="btnSaveConfig">Guardar</button>
@@ -290,16 +289,14 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 </div>
 
 <script>
-const APP_VERSION = 'v1.3';
+const APP_VERSION = 'v1.4';
 const STORAGE_KEY = 'malla-icivil-udp-v3';
 const CONFIG_KEY = 'malla-config-v3';
-const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
 
 let courses = [];
-let config = { limit: 30, extra: 6, entryYear: 2024, syncKey: '', syncBin: '' };
+let config = { limit: 30, extra: 6, entryYear: 2024, fbConfig: '', fbCode: '' };
 let editingId = null;
 let lastLocalChange = 0;
-let syncTimer = null;
 
 // ---- Malla real: Ingeniería Civil Industrial, UDP ----
 // [semestre, nombre, créditos, [prerrequisitos por nombre], minCreditosAcumulados]
@@ -399,8 +396,10 @@ function loadLocal(){
 function saveLocalCourses(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); }catch(e){} }
 function saveLocalConfig(){ try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); }catch(e){} }
 
-// ---------- Sincronización (jsonbin.io) ----------
-function syncEnabled(){ return !!(config.syncKey && config.syncBin); }
+// ---------- Sincronización (Firebase Firestore del proyecto del usuario) ----------
+let fbApp = null, fbDb = null, fbUnsub = null;
+
+function syncEnabled(){ return !!(config.fbConfig && config.fbCode); }
 function setSyncBadge(state, label){
   const b = document.getElementById('syncBadge');
   b.textContent = label;
@@ -410,61 +409,70 @@ function updateSyncBadgeIdle(){
   setSyncBadge(syncEnabled() ? 'on' : 'off', syncEnabled() ? 'Sincronizado' : 'Sin sincronizar');
 }
 
-async function fetchRemote(){
-  if(!syncEnabled()) return null;
+function initFirebase(){
+  if(!syncEnabled()) return false;
   try{
-    const res = await fetch(`${JSONBIN_BASE}/${config.syncBin}/latest`, {
-      headers: { 'X-Master-Key': config.syncKey }
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    return data.record || null;
+    let cfg = config.fbConfig;
+    if(typeof cfg === 'string') cfg = JSON.parse(cfg);
+    if(!fbApp){
+      fbApp = firebase.initializeApp(cfg);
+      fbDb = firebase.firestore();
+    }
+    return true;
   }catch(e){
-    setSyncBadge('off','Sin conexión');
-    return null;
+    console.error('Firebase init error', e);
+    return false;
   }
 }
-async function pushRemote(){
-  if(!syncEnabled()) return;
-  setSyncBadge('off','Sincronizando…');
-  try{
-    const payload = { courses, config: {limit:config.limit, extra:config.extra, entryYear:config.entryYear}, updatedAt: Date.now() };
-    const res = await fetch(`${JSONBIN_BASE}/${config.syncBin}`, {
-      method:'PUT',
-      headers: { 'Content-Type':'application/json', 'X-Master-Key': config.syncKey },
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
+
+function docRef(){
+  return fbDb.collection('mallas').doc(config.fbCode);
+}
+
+function startListening(){
+  if(fbUnsub) fbUnsub();
+  setSyncBadge('off','Conectando…');
+  fbUnsub = docRef().onSnapshot(snap=>{
+    if(snap.exists){
+      const data = snap.data();
+      if(data.updatedAt && data.updatedAt <= lastLocalChange) { setSyncBadge('on','Sincronizado'); return; }
+      if(data.courses){ courses = data.courses; saveLocalCourses(); }
+      if(data.appConfig){
+        config.limit = data.appConfig.limit ?? config.limit;
+        config.extra = data.appConfig.extra ?? config.extra;
+        config.entryYear = data.appConfig.entryYear ?? config.entryYear;
+        saveLocalConfig();
+      }
+      render();
+    }
     setSyncBadge('on','Sincronizado');
-  }catch(e){
-    setSyncBadge('off','Error al sincronizar');
-  }
+  }, err=>{
+    console.error('Firestore listen error', err);
+    setSyncBadge('off','Error de conexión');
+  });
 }
+
+let syncTimer = null;
 function scheduleSync(){
+  lastLocalChange = Date.now();
   saveLocalCourses();
   if(!syncEnabled()) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(pushRemote, 900);
+  syncTimer = setTimeout(pushRemote, 700);
 }
-
-async function createSyncCode(){
-  const key = document.getElementById('cfg_syncKey').value.trim();
-  if(!key){ showSyncStatus('Pega primero tu clave de API.', true); return; }
-  showSyncStatus('Creando código…', false);
+async function pushRemote(){
+  if(!initFirebase()) return;
+  setSyncBadge('off','Guardando…');
   try{
-    const payload = { courses, config: {limit:config.limit, extra:config.extra, entryYear:config.entryYear}, updatedAt: Date.now() };
-    const res = await fetch(`${JSONBIN_BASE}`, {
-      method:'POST',
-      headers: { 'Content-Type':'application/json', 'X-Master-Key': key, 'X-Bin-Name': 'mi-malla-udp' },
-      body: JSON.stringify(payload)
+    await docRef().set({
+      courses,
+      appConfig: { limit:config.limit, extra:config.extra, entryYear:config.entryYear },
+      updatedAt: lastLocalChange
     });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    const binId = data.metadata && data.metadata.id;
-    document.getElementById('cfg_syncBin').value = binId;
-    showSyncStatus('Código creado. Guarda los cambios y cópialo al otro dispositivo.', false, true);
+    setSyncBadge('on','Sincronizado');
   }catch(e){
-    showSyncStatus('No se pudo crear el código. Revisa tu clave de API.', true);
+    console.error('Firestore write error', e);
+    setSyncBadge('off','Error al guardar');
   }
 }
 function showSyncStatus(msg, isErr, isOk){
@@ -472,7 +480,6 @@ function showSyncStatus(msg, isErr, isOk){
   el.textContent = msg;
   el.className = 'sync-status' + (isErr?' err':'') + (isOk?' ok':'');
 }
-document.getElementById('btnCreateSyncCode').onclick = createSyncCode;
 
 // ---------- Lógica de negocio ----------
 function doneCreditsTotal(){
@@ -637,8 +644,8 @@ document.getElementById('btnConfig').onclick = ()=>{
   document.getElementById('cfg_entryYear').value = config.entryYear;
   document.getElementById('cfg_limit').value = config.limit;
   document.getElementById('cfg_extra').value = config.extra;
-  document.getElementById('cfg_syncKey').value = config.syncKey || '';
-  document.getElementById('cfg_syncBin').value = config.syncBin || '';
+  document.getElementById('cfg_fbConfig').value = config.fbConfig || '';
+  document.getElementById('cfg_fbCode').value = config.fbCode || '';
   showSyncStatus('', false);
   document.getElementById('configSheet').classList.add('open');
 };
@@ -647,25 +654,20 @@ document.getElementById('btnSaveConfig').onclick = async ()=>{
   config.entryYear = parseInt(document.getElementById('cfg_entryYear').value) || config.entryYear;
   config.limit = parseInt(document.getElementById('cfg_limit').value)||30;
   config.extra = parseInt(document.getElementById('cfg_extra').value)||0;
-  const newKey = document.getElementById('cfg_syncKey').value.trim();
-  const newBin = document.getElementById('cfg_syncBin').value.trim();
-  const syncChanged = (newKey !== config.syncKey) || (newBin !== config.syncBin);
-  config.syncKey = newKey;
-  config.syncBin = newBin;
+  const newFbConfig = document.getElementById('cfg_fbConfig').value.trim();
+  const newFbCode = document.getElementById('cfg_fbCode').value.trim();
+  const syncChanged = (newFbConfig !== config.fbConfig) || (newFbCode !== config.fbCode);
+  if(newFbConfig){
+    try{ JSON.parse(newFbConfig); }
+    catch(e){ showSyncStatus('El JSON de Firebase no es válido, revísalo.', true); return; }
+  }
+  config.fbConfig = newFbConfig;
+  config.fbCode = newFbCode;
   saveLocalConfig();
   document.getElementById('configSheet').classList.remove('open');
   updateSyncBadgeIdle();
   if(syncChanged && syncEnabled()){
-    // al conectar un sync ya existente, traemos lo remoto y lo usamos como fuente de verdad
-    const remote = await fetchRemote();
-    if(remote && remote.courses){
-      courses = remote.courses;
-      if(remote.config){ config.limit = remote.config.limit ?? config.limit; config.extra = remote.config.extra ?? config.extra; config.entryYear = remote.config.entryYear ?? config.entryYear; saveLocalConfig(); }
-      saveLocalCourses();
-      render();
-    } else {
-      pushRemote();
-    }
+    if(initFirebase()) startListening();
   }
 };
 
@@ -793,33 +795,10 @@ async function init(){
   loadLocal();
   render();
   updateSyncBadgeIdle();
-  if(syncEnabled()){
-    const remote = await fetchRemote();
-    if(remote && remote.courses){
-      courses = remote.courses;
-      if(remote.config){ config.limit = remote.config.limit ?? config.limit; config.extra = remote.config.extra ?? config.extra; config.entryYear = remote.config.entryYear ?? config.entryYear; }
-      saveLocalCourses(); saveLocalConfig();
-      render();
-      setSyncBadge('on','Sincronizado');
-    }
+  if(syncEnabled() && initFirebase()){
+    startListening();
   }
-  // refrescar desde remoto cada vez que la pestaña vuelve a estar visible
-  document.addEventListener('visibilitychange', async ()=>{
-    if(document.visibilityState==='visible' && syncEnabled()){
-      const remote = await fetchRemote();
-      if(remote && remote.courses && remote.updatedAt > lastLocalChange){
-        courses = remote.courses;
-        saveLocalCourses();
-        render();
-        setSyncBadge('on','Sincronizado');
-      }
-    }
-  });
 }
-
-// marcar el momento de cualquier cambio local para comparar con el remoto
-const _origScheduleSync = scheduleSync;
-scheduleSync = function(){ lastLocalChange = Date.now(); _origScheduleSync(); };
 
 init();
 </script>
