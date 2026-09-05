@@ -25,9 +25,27 @@ Listo — queda como un ícono normal en tu teléfono, funciona offline (gracias
 
 ## Notas
 
-- Los datos se guardan con `localStorage`, por lo tanto son **locales a cada navegador/dispositivo**. Si la abres en el computador y en el celular, no se sincronizan solas.
 - Si subes cambios nuevos al repo (por ejemplo corriges un prerrequisito), quienes ya la tengan instalada verán la actualización la próxima vez que abran la app con conexión (el service worker refresca el caché).
 - Para restaurar la malla original si algo queda mal editado: mantén presionado el título "Mi Malla" por un segundo.
+
+## Semestre automático según año de ingreso
+
+En **⚙ Reglas** ingresa tu año de ingreso (ej. 2024). La app calcula sola:
+- **Semestre según ingreso**: dónde deberías ir si no llevaras atraso, contando desde marzo de ese año (2 semestres por año).
+- **Semestre aprox. real**: se estima según los ramos marcados como "cursando" (usa el semestre de la malla donde más ramos estás cursando); si no marcaste ninguno, lo estima con tus créditos aprobados.
+- **Semestres de atraso**: la diferencia entre ambos.
+
+## Sincronizar entre celular y computador
+
+Por defecto los datos se guardan solo en el navegador de cada dispositivo (`localStorage`). Para que se vean iguales en el celular y el computador, la app puede sincronizar contra un "bin" gratuito de **jsonbin.io**:
+
+1. Crea una cuenta gratis en https://jsonbin.io
+2. Ve a **API Keys** → "Create Access Key", dale un nombre, y marca los permisos de Bins (create, read, update). Copia esa clave.
+3. En la app, abre **⚙ Reglas**, pega la clave en "Clave de API (jsonbin.io Master Key)" y toca **Crear**. Esto genera un "Código de sincronización" (el ID del bin).
+4. Guarda los cambios. Copia ese código (y la misma clave) y pégalos en el mismo panel del otro dispositivo (por ejemplo tu celular), luego guarda ahí también.
+5. Desde ese momento, cada vez que marques un ramo como aprobado/cursando en un dispositivo, se sube automáticamente; y al abrir la app en el otro dispositivo (o volver a la pestaña), trae los datos más recientes.
+
+Si no configuras esto, la app sigue funcionando 100% offline y local, solo que cada dispositivo tendrá su propia copia.
 
 ## Estructura
 
