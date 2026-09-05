@@ -19,6 +19,7 @@
   --ink-dim:#8B97A6;
   --accent:#3FA8A0;
   --accent2:#D98B4A;
+  --progress:#5B8DEF;
   --danger:#C0574A;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -37,8 +38,14 @@ header{
   background:linear-gradient(180deg, var(--bg) 70%, transparent);
   padding:18px 16px 10px;
 }
+.head-row{display:flex; justify-content:space-between; align-items:flex-start;}
 h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 .subtitle{color:var(--ink-dim); font-size:13px; margin:0;}
+.sync-badge{
+  font-size:10.5px; padding:5px 9px; border-radius:999px; border:1px solid var(--card-border);
+  background:var(--card); color:var(--ink-dim); white-space:nowrap; margin-top:2px;
+}
+.sync-badge.on{color:var(--accent); border-color:var(--accent);}
 .progress-wrap{
   margin-top:14px; background:var(--card); border:1px solid var(--card-border);
   border-radius:14px; padding:14px 16px;
@@ -53,6 +60,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
   padding:8px 10px; font-size:12px; color:var(--ink-dim); flex:1; min-width:90px;
 }
 .stat b{display:block; color:var(--ink); font-size:16px; font-weight:700; margin-bottom:2px;}
+.stat.warn b{color:var(--accent2);}
 
 .board{display:flex; gap:12px; overflow-x:auto; padding:14px 16px 10px; scroll-snap-type:x proximity;}
 .column{flex:0 0 148px; scroll-snap-align:start;}
@@ -72,6 +80,11 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 .course.locked{opacity:0.32;}
 .course.unlocked{opacity:0.62; border-color:var(--accent2);}
 .course.unlocked .meta{color:var(--accent2);}
+.course.in-progress{opacity:0.9; border-color:var(--progress); background:#161E2C;}
+.course.in-progress .meta{color:var(--progress);}
+.course.in-progress::after{
+  content:"…"; position:absolute; top:6px; right:9px; color:var(--progress); font-weight:900; font-size:15px;
+}
 .course.done{opacity:1; border-color:var(--accent); background:#152420;}
 .course.done .name{text-decoration:line-through; color:var(--ink-dim);}
 .course.done::after{
@@ -100,6 +113,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
   border-top:1px solid var(--card-border);
 }
 .sheet h2{font-size:17px; margin:0 0 14px;}
+.sheet h3{font-size:13px; margin:20px 0 4px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.04em;}
 .sheet label{display:block; font-size:12px; color:var(--ink-dim); margin:12px 0 5px; font-weight:600;}
 .sheet input, .sheet select, .sheet textarea{
   width:100%; background:var(--card); border:1px solid var(--card-border); color:var(--ink);
@@ -115,31 +129,51 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
   display:flex; align-items:center; gap:6px;
 }
 .chip button{background:none; border:none; color:var(--danger); font-weight:900; padding:0; font-size:13px;}
+.status-toggle{display:flex; gap:8px; margin-top:6px;}
+.status-toggle label{
+  flex:1; text-align:center; margin:0; padding:10px 6px; border-radius:10px; border:1px solid var(--card-border);
+  background:var(--card); font-size:12px; font-weight:700; color:var(--ink-dim); cursor:pointer;
+}
+.status-toggle input{display:none;}
+.status-toggle input:checked + span{color:var(--ink);}
+.status-toggle label:has(input:checked){border-color:var(--accent); background:#152420; color:var(--accent);}
 
 .summary-pre{
   white-space:pre-wrap; font-family:var(--mono); font-size:11.5px; background:#0B0E12;
   border:1px solid var(--card-border); border-radius:12px; padding:14px; line-height:1.5; color:#B9E4DE;
 }
 .install-note{font-size:11.5px; color:var(--ink-dim); margin-top:10px; line-height:1.4;}
-.legend{display:flex; gap:14px; padding:0 16px 6px; font-size:11px; color:var(--ink-dim);}
+.legend{display:flex; gap:12px; padding:0 16px 6px; font-size:11px; color:var(--ink-dim); flex-wrap:wrap;}
 .legend span{display:flex; align-items:center; gap:5px;}
 .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
 .dot.done{background:var(--accent);}
 .dot.unlocked{background:var(--accent2);}
 .dot.locked{background:#42505F;}
+.dot.progress{background:var(--progress);}
+.sync-row{display:flex; gap:8px; align-items:center;}
+.sync-row input{flex:1;}
+.sync-status{font-size:11.5px; margin-top:8px; color:var(--ink-dim);}
+.sync-status.ok{color:var(--accent);}
+.sync-status.err{color:var(--danger);}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Mi Malla</h1>
-  <p class="subtitle">Ingeniería Civil Industrial · UDP</p>
+  <div class="head-row">
+    <div>
+      <h1>Mi Malla</h1>
+      <p class="subtitle">Ingeniería Civil Industrial · UDP</p>
+    </div>
+    <div class="sync-badge" id="syncBadge">Sin sincronizar</div>
+  </div>
   <div class="progress-wrap">
     <div class="progress-row"><span>Créditos aprobados</span><b id="creditProgressText">0 / 0</b></div>
     <div class="bar"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
     <div class="stats">
-      <div class="stat"><b id="statSemActual">–</b>Semestre estimado</div>
-      <div class="stat"><b id="statAtraso">–</b>Semestres de atraso</div>
+      <div class="stat"><b id="statSemIdeal">–</b>Semestre según ingreso</div>
+      <div class="stat"><b id="statSemActual">–</b>Semestre aprox. real</div>
+      <div class="stat warn"><b id="statAtraso">–</b>Semestres de atraso</div>
       <div class="stat"><b id="statDesbloq">–</b>Ramos desbloqueados</div>
     </div>
   </div>
@@ -147,6 +181,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 
 <div class="legend">
   <span><i class="dot done"></i>Completado</span>
+  <span><i class="dot progress"></i>Cursando</span>
   <span><i class="dot unlocked"></i>Disponible</span>
   <span><i class="dot locked"></i>Bloqueado</span>
 </div>
@@ -180,9 +215,12 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
     <label>Prerrequisitos (ramos)</label>
     <div class="chip-list" id="prereqChips"></div>
     <select id="f_prereqSelect" style="margin-top:8px;"></select>
-    <label style="margin-top:14px; display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" id="f_done" style="width:auto;"> Ya aprobado
-    </label>
+    <label>Estado</label>
+    <div class="status-toggle">
+      <label><input type="radio" name="f_status" value="pending"><span>Pendiente</span></label>
+      <label><input type="radio" name="f_status" value="inProgress"><span>Cursando</span></label>
+      <label><input type="radio" name="f_status" value="done"><span>Aprobado</span></label>
+    </div>
     <div class="sheet-actions">
       <button class="btn-secondary" id="btnDeleteCourse" style="color:var(--danger);">Eliminar</button>
       <button class="btn-secondary" id="btnCancelCourse">Cancelar</button>
@@ -194,12 +232,26 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 <!-- Sheet: reglas -->
 <div class="sheet-backdrop" id="configSheet">
   <div class="sheet">
-    <h2>Reglas de la carrera</h2>
+    <h2>Reglas y datos</h2>
+    <label>Año de ingreso a la carrera</label>
+    <input id="cfg_entryYear" type="number" placeholder="2024">
     <label>Límite de créditos por semestre (normal)</label>
     <input id="cfg_limit" type="number">
     <label>Créditos extra permitidos por papeleta</label>
     <input id="cfg_extra" type="number">
-    <p class="install-note">Con papeleta el tope pasa a ser límite + extra. Ajusta estos valores según lo que indique tu escuela.</p>
+    <p class="install-note">El semestre "según ingreso" se calcula solo, contando desde marzo de tu año de ingreso (2 semestres por año).</p>
+
+    <h3>Sincronizar entre celular y computador</h3>
+    <p class="install-note">Crea un código de sincronización en un dispositivo y pégalo en los demás para que compartan la misma información automáticamente. Usa el servicio gratuito jsonbin.io.</p>
+    <label>Clave de API (jsonbin.io Master Key)</label>
+    <input id="cfg_syncKey" type="text" placeholder="Pega aquí tu X-Master-Key">
+    <label>Código de sincronización</label>
+    <div class="sync-row">
+      <input id="cfg_syncBin" type="text" placeholder="Se genera automáticamente">
+      <button class="btn-secondary" id="btnCreateSyncCode" style="flex:0 0 auto; padding:11px 14px;">Crear</button>
+    </div>
+    <div class="sync-status" id="syncStatusMsg"></div>
+    <p class="install-note">1) En tu primer dispositivo, pega tu clave y toca "Crear" para generar el código.<br>2) Copia ese código y, en el otro dispositivo, pega la misma clave y el mismo código en este mismo panel, luego guarda.<br>Consigue tu clave gratis creando una cuenta en <b>jsonbin.io</b> → API Keys → "Create Access Key" (marca los permisos de Bins: create/read/update).</p>
     <div class="sheet-actions">
       <button class="btn-secondary" id="btnCancelConfig">Cancelar</button>
       <button class="btn-primary" id="btnSaveConfig">Guardar</button>
@@ -224,7 +276,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 <div class="sheet-backdrop" id="resetSheet">
   <div class="sheet">
     <h2>Restaurar malla base</h2>
-    <p class="install-note">Esto borra todos tus cambios (ramos editados y marcados como aprobados) y vuelve a cargar la malla original de Ingeniería Civil Industrial.</p>
+    <p class="install-note">Esto borra todos tus cambios (ramos editados y marcados) y vuelve a cargar la malla original de Ingeniería Civil Industrial.</p>
     <div class="sheet-actions">
       <button class="btn-secondary" id="btnCancelReset">Cancelar</button>
       <button class="btn-primary" id="btnConfirmReset" style="background:var(--danger); color:#fff;">Restaurar</button>
@@ -233,14 +285,17 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 </div>
 
 <script>
-const STORAGE_KEY = 'malla-icivil-udp-v2';
-const CONFIG_KEY = 'malla-config-v2';
+const STORAGE_KEY = 'malla-icivil-udp-v3';
+const CONFIG_KEY = 'malla-config-v3';
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
 
 let courses = [];
-let config = { limit: 30, extra: 6 };
+let config = { limit: 30, extra: 6, entryYear: 2024, syncKey: '', syncBin: '' };
 let editingId = null;
+let lastLocalChange = 0;
+let syncTimer = null;
 
-// ---- Malla real: Ingeniería Civil Industrial, UDP (datos entregados por el alumno) ----
+// ---- Malla real: Ingeniería Civil Industrial, UDP ----
 // [semestre, nombre, créditos, [prerrequisitos por nombre], minCreditosAcumulados]
 const seed = [
   [1,"Álgebra y Geometría",7,[],0],
@@ -312,8 +367,7 @@ const seed = [
 ];
 
 function seedCourses(){
-  const list = seed.map((s,i)=>({ id:'c'+i, name:s[1], sem:s[0], credits:s[2], prereqNames:s[3], minCredits:s[4]||0, done:false }));
-  // resolver nombres de prerrequisito a ids (primer match por nombre)
+  const list = seed.map((s,i)=>({ id:'c'+i, name:s[1], sem:s[0], credits:s[2], prereqNames:s[3], minCredits:s[4]||0, status:'pending' }));
   list.forEach(c=>{
     c.prereqs = c.prereqNames.map(n=>{
       const found = list.find(x=>x.name===n);
@@ -324,33 +378,141 @@ function seedCourses(){
   return list;
 }
 
-function loadData(){
+// ---------- Persistencia local ----------
+function loadLocal(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     courses = raw ? JSON.parse(raw) : seedCourses();
-    if(!raw) saveCourses();
+    if(!raw) saveLocalCourses();
   }catch(e){ courses = seedCourses(); }
   try{
     const raw2 = localStorage.getItem(CONFIG_KEY);
-    if(raw2) config = JSON.parse(raw2); else saveConfig();
-  }catch(e){ /* keep defaults */ }
-  render();
+    if(raw2) config = Object.assign(config, JSON.parse(raw2)); else saveLocalConfig();
+  }catch(e){}
 }
-function saveCourses(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); }catch(e){} }
-function saveConfig(){ try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); }catch(e){} }
+function saveLocalCourses(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); }catch(e){} }
+function saveLocalConfig(){ try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); }catch(e){} }
 
+// ---------- Sincronización (jsonbin.io) ----------
+function syncEnabled(){ return !!(config.syncKey && config.syncBin); }
+function setSyncBadge(state, label){
+  const b = document.getElementById('syncBadge');
+  b.textContent = label;
+  b.className = 'sync-badge' + (state==='on' ? ' on' : '');
+}
+function updateSyncBadgeIdle(){
+  setSyncBadge(syncEnabled() ? 'on' : 'off', syncEnabled() ? 'Sincronizado' : 'Sin sincronizar');
+}
+
+async function fetchRemote(){
+  if(!syncEnabled()) return null;
+  try{
+    const res = await fetch(`${JSONBIN_BASE}/${config.syncBin}/latest`, {
+      headers: { 'X-Master-Key': config.syncKey }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    return data.record || null;
+  }catch(e){
+    setSyncBadge('off','Sin conexión');
+    return null;
+  }
+}
+async function pushRemote(){
+  if(!syncEnabled()) return;
+  setSyncBadge('off','Sincronizando…');
+  try{
+    const payload = { courses, config: {limit:config.limit, extra:config.extra, entryYear:config.entryYear}, updatedAt: Date.now() };
+    const res = await fetch(`${JSONBIN_BASE}/${config.syncBin}`, {
+      method:'PUT',
+      headers: { 'Content-Type':'application/json', 'X-Master-Key': config.syncKey },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    setSyncBadge('on','Sincronizado');
+  }catch(e){
+    setSyncBadge('off','Error al sincronizar');
+  }
+}
+function scheduleSync(){
+  saveLocalCourses();
+  if(!syncEnabled()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushRemote, 900);
+}
+
+async function createSyncCode(){
+  const key = document.getElementById('cfg_syncKey').value.trim();
+  if(!key){ showSyncStatus('Pega primero tu clave de API.', true); return; }
+  showSyncStatus('Creando código…', false);
+  try{
+    const payload = { courses, config: {limit:config.limit, extra:config.extra, entryYear:config.entryYear}, updatedAt: Date.now() };
+    const res = await fetch(`${JSONBIN_BASE}`, {
+      method:'POST',
+      headers: { 'Content-Type':'application/json', 'X-Master-Key': key, 'X-Bin-Name': 'mi-malla-udp' },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const binId = data.metadata && data.metadata.id;
+    document.getElementById('cfg_syncBin').value = binId;
+    showSyncStatus('Código creado. Guarda los cambios y cópialo al otro dispositivo.', false, true);
+  }catch(e){
+    showSyncStatus('No se pudo crear el código. Revisa tu clave de API.', true);
+  }
+}
+function showSyncStatus(msg, isErr, isOk){
+  const el = document.getElementById('syncStatusMsg');
+  el.textContent = msg;
+  el.className = 'sync-status' + (isErr?' err':'') + (isOk?' ok':'');
+}
+document.getElementById('btnCreateSyncCode').onclick = createSyncCode;
+
+// ---------- Lógica de negocio ----------
 function doneCreditsTotal(){
-  return courses.filter(c=>c.done).reduce((a,c)=>a+c.credits,0);
+  return courses.filter(c=>c.status==='done').reduce((a,c)=>a+c.credits,0);
 }
-
 function isUnlocked(course){
-  if(course.done) return true;
+  if(course.status==='done' || course.status==='inProgress') return true;
   const prereqsOk = !course.prereqs.length || course.prereqs.every(pid=>{
     const p = courses.find(c=>c.id===pid);
-    return p && p.done;
+    return p && p.status==='done';
   });
   const creditsOk = !course.minCredits || doneCreditsTotal() >= course.minCredits;
   return prereqsOk && creditsOk;
+}
+
+function idealSemesterNow(){
+  const entryYear = parseInt(config.entryYear) || new Date().getFullYear();
+  const now = new Date();
+  let sem = (now.getFullYear() - entryYear) * 2;
+  const month = now.getMonth(); // 0=ene
+  if(month >= 7) sem += 2;        // ago-dic => 2do semestre del año
+  else if(month >= 2) sem += 1;   // mar-jul => 1er semestre del año
+  // ene-feb cuenta como vacaciones de fin del semestre anterior
+  return Math.max(1, sem);
+}
+
+function estimateRealSemester(sems){
+  const inProgress = courses.filter(c=>c.status==='inProgress');
+  if(inProgress.length){
+    const counts = {};
+    inProgress.forEach(c=> counts[c.sem] = (counts[c.sem]||0)+1);
+    let best = inProgress[0].sem, bestCount = 0;
+    Object.entries(counts).forEach(([sem,count])=>{ if(count>bestCount){ bestCount=count; best=parseInt(sem);} });
+    return best;
+  }
+  const totalCredits = courses.reduce((a,c)=>a+c.credits,0);
+  const maxSem = Math.max(...sems);
+  const creditsPerSemAvg = totalCredits / maxSem;
+  const doneCredits = doneCreditsTotal();
+  const est = creditsPerSemAvg ? (doneCredits / creditsPerSemAvg) + 1 : 1;
+  let primerSemPendiente = maxSem;
+  for(const s of sems){
+    const items = courses.filter(c=>c.sem===s);
+    if(items.some(c=>c.status!=='done')){ primerSemPendiente = s; break; }
+  }
+  return Math.min(primerSemPendiente, Math.round(est)) || primerSemPendiente;
 }
 
 function render(){
@@ -366,11 +528,12 @@ function render(){
     col.innerHTML = `<div class="col-head"><span>Sem ${sem}</span><span class="credits">${semCredits}c</span></div>`;
     items.forEach(c=>{
       totalCredits += c.credits;
-      if(c.done) doneCredits += c.credits;
+      if(c.status==='done') doneCredits += c.credits;
       const unlocked = isUnlocked(c);
-      if(unlocked && !c.done) unlockedCount++;
+      if(unlocked && c.status==='pending') unlockedCount++;
       const div = document.createElement('div');
-      div.className = 'course ' + (c.done ? 'done' : unlocked ? 'unlocked' : 'locked');
+      const cls = c.status==='done' ? 'done' : c.status==='inProgress' ? 'in-progress' : unlocked ? 'unlocked' : 'locked';
+      div.className = 'course ' + cls;
       const extra = c.minCredits ? `min ${c.minCredits}cr` : (c.prereqs.length? '⛓'+c.prereqs.length : '');
       div.innerHTML = `<div class="name">${c.name}</div><div class="meta"><span>${c.credits} cr</span><span>${extra}</span></div>`;
       div.addEventListener('click', ()=> openCourseSheet(c.id));
@@ -383,29 +546,23 @@ function render(){
   document.getElementById('barFill').style.width = totalCredits? (doneCredits/totalCredits*100)+'%' : '0%';
   document.getElementById('statDesbloq').textContent = unlockedCount;
 
-  const maxSem = Math.max(...sems);
-  const creditsPerSemAvg = totalCredits / maxSem;
-  const semEstimadoPorCreditos = creditsPerSemAvg? (doneCredits / creditsPerSemAvg) : 0;
-  let primerSemPendiente = maxSem;
-  for(const s of sems){
-    const items = courses.filter(c=>c.sem===s);
-    if(items.some(c=>!c.done)){ primerSemPendiente = s; break; }
-  }
-  document.getElementById('statSemActual').textContent = 'S' + primerSemPendiente;
-  const atraso = Math.max(0, Math.round((primerSemPendiente - 1) - semEstimadoPorCreditos));
-  document.getElementById('statAtraso').textContent = atraso;
+  const ideal = idealSemesterNow();
+  const real = estimateRealSemester(sems);
+  document.getElementById('statSemIdeal').textContent = 'S' + ideal;
+  document.getElementById('statSemActual').textContent = 'S' + real;
+  document.getElementById('statAtraso').textContent = Math.max(0, ideal - real);
 }
 
 // ---- Course sheet ----
 function openCourseSheet(id){
   editingId = id || null;
-  const c = id ? courses.find(x=>x.id===id) : { name:'', sem:1, credits:6, prereqs:[], minCredits:0, done:false };
+  const c = id ? courses.find(x=>x.id===id) : { name:'', sem:1, credits:6, prereqs:[], minCredits:0, status:'pending' };
   document.getElementById('courseSheetTitle').textContent = id ? 'Editar ramo' : 'Nuevo ramo';
   document.getElementById('f_name').value = c.name;
   document.getElementById('f_sem').value = c.sem;
   document.getElementById('f_credits').value = c.credits;
   document.getElementById('f_minCredits').value = c.minCredits || '';
-  document.getElementById('f_done').checked = c.done;
+  document.querySelectorAll('input[name="f_status"]').forEach(r=> r.checked = (r.value===c.status));
   document.getElementById('btnDeleteCourse').style.display = id ? '' : 'none';
   renderPrereqUI(c);
   document.getElementById('courseSheet').classList.add('open');
@@ -441,7 +598,7 @@ document.getElementById('btnDeleteCourse').onclick = ()=>{
   if(!editingId) return;
   courses = courses.filter(c=>c.id!==editingId);
   courses.forEach(c=> c.prereqs = c.prereqs.filter(p=>p!==editingId));
-  saveCourses();
+  scheduleSync();
   document.getElementById('courseSheet').classList.remove('open');
   render();
 };
@@ -451,37 +608,61 @@ document.getElementById('btnSaveCourse').onclick = ()=>{
   const sem = parseInt(document.getElementById('f_sem').value)||1;
   const credits = parseInt(document.getElementById('f_credits').value)||0;
   const minCredits = parseInt(document.getElementById('f_minCredits').value)||0;
-  const done = document.getElementById('f_done').checked;
+  const statusEl = document.querySelector('input[name="f_status"]:checked');
+  const status = statusEl ? statusEl.value : 'pending';
   if(editingId){
     const c = courses.find(x=>x.id===editingId);
-    Object.assign(c, {name, sem, credits, minCredits, done, prereqs:tempPrereqs});
+    Object.assign(c, {name, sem, credits, minCredits, status, prereqs:tempPrereqs});
   } else {
-    courses.push({ id:'c'+Date.now(), name, sem, credits, minCredits, done, prereqs:tempPrereqs });
+    courses.push({ id:'c'+Date.now(), name, sem, credits, minCredits, status, prereqs:tempPrereqs });
   }
-  saveCourses();
+  scheduleSync();
   document.getElementById('courseSheet').classList.remove('open');
   render();
 };
 
 // ---- Config sheet ----
 document.getElementById('btnConfig').onclick = ()=>{
+  document.getElementById('cfg_entryYear').value = config.entryYear;
   document.getElementById('cfg_limit').value = config.limit;
   document.getElementById('cfg_extra').value = config.extra;
+  document.getElementById('cfg_syncKey').value = config.syncKey || '';
+  document.getElementById('cfg_syncBin').value = config.syncBin || '';
+  showSyncStatus('', false);
   document.getElementById('configSheet').classList.add('open');
 };
 document.getElementById('btnCancelConfig').onclick = ()=> document.getElementById('configSheet').classList.remove('open');
-document.getElementById('btnSaveConfig').onclick = ()=>{
+document.getElementById('btnSaveConfig').onclick = async ()=>{
+  config.entryYear = parseInt(document.getElementById('cfg_entryYear').value) || config.entryYear;
   config.limit = parseInt(document.getElementById('cfg_limit').value)||30;
   config.extra = parseInt(document.getElementById('cfg_extra').value)||0;
-  saveConfig();
+  const newKey = document.getElementById('cfg_syncKey').value.trim();
+  const newBin = document.getElementById('cfg_syncBin').value.trim();
+  const syncChanged = (newKey !== config.syncKey) || (newBin !== config.syncBin);
+  config.syncKey = newKey;
+  config.syncBin = newBin;
+  saveLocalConfig();
   document.getElementById('configSheet').classList.remove('open');
+  updateSyncBadgeIdle();
+  if(syncChanged && syncEnabled()){
+    // al conectar un sync ya existente, traemos lo remoto y lo usamos como fuente de verdad
+    const remote = await fetchRemote();
+    if(remote && remote.courses){
+      courses = remote.courses;
+      if(remote.config){ config.limit = remote.config.limit ?? config.limit; config.extra = remote.config.extra ?? config.extra; config.entryYear = remote.config.entryYear ?? config.entryYear; saveLocalConfig(); }
+      saveLocalCourses();
+      render();
+    } else {
+      pushRemote();
+    }
+  }
 };
 
 // ---- Reset ----
 document.getElementById('btnCancelReset').onclick = ()=> document.getElementById('resetSheet').classList.remove('open');
 document.getElementById('btnConfirmReset').onclick = ()=>{
   courses = seedCourses();
-  saveCourses();
+  scheduleSync();
   document.getElementById('resetSheet').classList.remove('open');
   render();
 };
@@ -491,15 +672,24 @@ function buildSummary(){
   const sems = [...new Set(courses.map(c=>c.sem))].sort((a,b)=>a-b);
   const totalCredits = courses.reduce((a,c)=>a+c.credits,0);
   const doneCredits = doneCreditsTotal();
-  const done = courses.filter(c=>c.done);
-  const pending = courses.filter(c=>!c.done);
+  const done = courses.filter(c=>c.status==='done');
+  const inProgress = courses.filter(c=>c.status==='inProgress');
+  const pending = courses.filter(c=>c.status==='pending');
   const unlocked = pending.filter(isUnlocked);
   const locked = pending.filter(c=>!isUnlocked(c));
+  const ideal = idealSemesterNow();
+  const real = estimateRealSemester(sems);
 
   let out = '';
   out += `RESUMEN DE MALLA — Ingeniería Civil Industrial (UDP)\n`;
   out += `Generado: ${new Date().toLocaleString('es-CL')}\n`;
   out += `=`.repeat(50) + '\n\n';
+  out += `DATOS DEL ALUMNO\n`;
+  out += `- Año de ingreso: ${config.entryYear}\n`;
+  out += `- Semestre en que debería estar según año de ingreso: S${ideal}\n`;
+  out += `- Semestre real aproximado (según avance/ramos cursando): S${real}\n`;
+  out += `- Semestres de atraso estimados: ${Math.max(0, ideal-real)}\n\n`;
+
   out += `REGLAS DE INSCRIPCIÓN\n`;
   out += `- Límite normal de créditos por semestre: ${config.limit}\n`;
   out += `- Créditos extra permitidos con papeleta: ${config.extra}\n`;
@@ -508,14 +698,15 @@ function buildSummary(){
   out += `PROGRESO GENERAL\n`;
   out += `- Créditos totales de la carrera: ${totalCredits}\n`;
   out += `- Créditos aprobados: ${doneCredits} (${totalCredits? ((doneCredits/totalCredits)*100).toFixed(1):0}%)\n`;
-  out += `- Ramos aprobados: ${done.length} / ${courses.length}\n\n`;
+  out += `- Ramos aprobados: ${done.length} / ${courses.length}\n`;
+  out += `- Ramos cursando actualmente: ${inProgress.length}\n\n`;
 
-  out += `MALLA COMPLETA POR SEMESTRE (marca [x]=aprobado, [ ]=pendiente)\n`;
+  out += `MALLA COMPLETA POR SEMESTRE ([x]=aprobado, [~]=cursando, [ ]=pendiente)\n`;
   sems.forEach(s=>{
     const items = courses.filter(c=>c.sem===s);
     out += `\nSemestre ${s}:\n`;
     items.forEach(c=>{
-      const mark = c.done ? '[x]' : '[ ]';
+      const mark = c.status==='done' ? '[x]' : c.status==='inProgress' ? '[~]' : '[ ]';
       const reqs = [];
       if(c.prereqs.length) reqs.push('ramos: ' + c.prereqs.map(pid=>{const p=courses.find(x=>x.id===pid); return p?p.name:'?';}).join(', '));
       if(c.minCredits) reqs.push(`min ${c.minCredits} créditos acumulados`);
@@ -527,20 +718,23 @@ function buildSummary(){
   out += `\nRAMOS APROBADOS (${done.length})\n`;
   out += done.length ? done.map(c=>`- ${c.name} (S${c.sem}, ${c.credits}cr)`).join('\n') : '(ninguno registrado aún)';
 
-  out += `\n\nRAMOS DISPONIBLES AHORA — requisitos cumplidos (${unlocked.length})\n`;
+  out += `\n\nRAMOS CURSANDO ACTUALMENTE (${inProgress.length})\n`;
+  out += inProgress.length ? inProgress.map(c=>`- ${c.name} (malla S${c.sem}, ${c.credits}cr)`).join('\n') : '(ninguno)';
+
+  out += `\n\nRAMOS DISPONIBLES PARA TOMAR — requisitos cumplidos (${unlocked.length})\n`;
   out += unlocked.length ? unlocked.map(c=>`- ${c.name} (malla S${c.sem}, ${c.credits}cr)`).join('\n') : '(ninguno)';
 
   out += `\n\nRAMOS AÚN BLOQUEADOS (${locked.length})\n`;
   out += locked.length ? locked.map(c=>{
     const missing = [];
-    const missingCourses = c.prereqs.filter(pid=>{const p=courses.find(x=>x.id===pid); return !(p&&p.done);}).map(pid=>{const p=courses.find(x=>x.id===pid); return p?p.name:'?';});
+    const missingCourses = c.prereqs.filter(pid=>{const p=courses.find(x=>x.id===pid); return !(p&&p.status==='done');}).map(pid=>{const p=courses.find(x=>x.id===pid); return p?p.name:'?';});
     if(missingCourses.length) missing.push(missingCourses.join(', '));
     if(c.minCredits && doneCredits < c.minCredits) missing.push(`${c.minCredits - doneCredits} créditos más`);
     return `- ${c.name} (malla S${c.sem}, ${c.credits}cr) — falta: ${missing.join(' + ')}`;
   }).join('\n') : '(ninguno)';
 
   out += `\n\nPREGUNTA PARA LA IA\n`;
-  out += `Con esta información: ¿en qué semestre de la carrera voy realmente ubicado según lo aprobado, cuántos semestres llevo de atraso respecto a la malla ideal, y qué combinación de ramos disponibles ahora me conviene tomar el próximo semestre para adelantar lo más posible sin superar el límite de créditos (considerando que puedo pedir ${config.extra} créditos extra por papeleta)?\n`;
+  out += `Con esta información: ¿cuántos semestres llevo realmente de atraso respecto a la malla ideal, y qué combinación de ramos disponibles ahora me conviene tomar el próximo semestre para adelantar lo más posible sin superar el límite de créditos (considerando que puedo pedir ${config.extra} créditos extra por papeleta)?\n`;
 
   return out;
 }
@@ -564,14 +758,13 @@ document.getElementById('btnDownloadSummary').onclick = ()=>{
   URL.revokeObjectURL(url);
 };
 
-// long-press en el header para restaurar malla (evita reset accidental)
+// long-press en el header para restaurar malla
 let pressTimer;
 document.querySelector('header h1').addEventListener('touchstart', ()=>{
   pressTimer = setTimeout(()=> document.getElementById('resetSheet').classList.add('open'), 900);
 });
 document.querySelector('header h1').addEventListener('touchend', ()=> clearTimeout(pressTimer));
 
-// cerrar sheets al tocar backdrop
 ['courseSheet','configSheet','summarySheet','resetSheet'].forEach(id=>{
   document.getElementById(id).addEventListener('click', (e)=>{
     if(e.target.id===id) e.target.classList.remove('open');
@@ -584,7 +777,39 @@ if('serviceWorker' in navigator){
   });
 }
 
-loadData();
+async function init(){
+  loadLocal();
+  render();
+  updateSyncBadgeIdle();
+  if(syncEnabled()){
+    const remote = await fetchRemote();
+    if(remote && remote.courses){
+      courses = remote.courses;
+      if(remote.config){ config.limit = remote.config.limit ?? config.limit; config.extra = remote.config.extra ?? config.extra; config.entryYear = remote.config.entryYear ?? config.entryYear; }
+      saveLocalCourses(); saveLocalConfig();
+      render();
+      setSyncBadge('on','Sincronizado');
+    }
+  }
+  // refrescar desde remoto cada vez que la pestaña vuelve a estar visible
+  document.addEventListener('visibilitychange', async ()=>{
+    if(document.visibilityState==='visible' && syncEnabled()){
+      const remote = await fetchRemote();
+      if(remote && remote.courses && remote.updatedAt > lastLocalChange){
+        courses = remote.courses;
+        saveLocalCourses();
+        render();
+        setSyncBadge('on','Sincronizado');
+      }
+    }
+  });
+}
+
+// marcar el momento de cualquier cambio local para comparar con el remoto
+const _origScheduleSync = scheduleSync;
+scheduleSync = function(){ lastLocalChange = Date.now(); _origScheduleSync(); };
+
+init();
 </script>
 </body>
 </html>
