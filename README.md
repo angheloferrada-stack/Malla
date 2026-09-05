@@ -35,17 +35,30 @@ En **⚙ Reglas** ingresa tu año de ingreso (ej. 2024). La app calcula sola:
 - **Semestre aprox. real**: se estima según los ramos marcados como "cursando" (usa el semestre de la malla donde más ramos estás cursando); si no marcaste ninguno, lo estima con tus créditos aprobados.
 - **Semestres de atraso**: la diferencia entre ambos.
 
-## Sincronizar entre celular y computador
+## Sincronizar entre celular y computador (con tu Firebase)
 
-Por defecto los datos se guardan solo en el navegador de cada dispositivo (`localStorage`). Para que se vean iguales en el celular y el computador, la app puede sincronizar contra un "bin" gratuito de **jsonbin.io**:
+Como ya tienes un proyecto de Firebase, la app se conecta directo a él usando **Firestore** (base de datos en la nube, con sincronización en tiempo real):
 
-1. Crea una cuenta gratis en https://jsonbin.io
-2. Ve a **API Keys** → "Create Access Key", dale un nombre, y marca los permisos de Bins (create, read, update). Copia esa clave.
-3. En la app, abre **⚙ Reglas**, pega la clave en "Clave de API (jsonbin.io Master Key)" y toca **Crear**. Esto genera un "Código de sincronización" (el ID del bin).
-4. Guarda los cambios. Copia ese código (y la misma clave) y pégalos en el mismo panel del otro dispositivo (por ejemplo tu celular), luego guarda ahí también.
-5. Desde ese momento, cada vez que marques un ramo como aprobado/cursando en un dispositivo, se sube automáticamente; y al abrir la app en el otro dispositivo (o volver a la pestaña), trae los datos más recientes.
+1. Entra a tu [consola de Firebase](https://console.firebase.google.com), abre tu proyecto (el mismo del otro PWA está bien, o puedes crear uno nuevo).
+2. En el menú lateral ve a **Build → Firestore Database** y créala si no existe (elige modo de producción o de prueba, cualquiera sirve para partir).
+3. En **Firestore → Reglas**, por ahora déjalas así para que la app pueda leer/escribir (luego puedes restringirlas si quieres):
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /mallas/{doc} {
+         allow read, write: if true;
+       }
+     }
+   }
+   ```
+4. Ve a **Configuración del proyecto (ícono de tuerca) → General**, baja hasta "Tus apps", y si no tienes una app web, créala (ícono `</>`). Copia el objeto `firebaseConfig` que te muestra (algo como `{"apiKey":"...","authDomain":"...","projectId":"...", ...}`).
+5. En la app, abre **⚙ Reglas**, pega ese objeto completo en "Configuración de Firebase", e inventa un "Código de tu malla" (por ejemplo `anghelo-malla`). Guarda.
+6. Repite el paso 5 en tu otro dispositivo (celular o computador), con el **mismo código**.
 
-Si no configuras esto, la app sigue funcionando 100% offline y local, solo que cada dispositivo tendrá su propia copia.
+Desde ahí, cualquier cambio que hagas (marcar un ramo, editar créditos, etc.) se guarda solo en Firebase y aparece automáticamente en tus otros dispositivos, sin tener que cerrar ni reabrir la app.
+
+Si no configuras esto, la app sigue funcionando 100% local en el navegador (`localStorage`), solo que sin compartir entre dispositivos.
 
 ## Estructura
 
