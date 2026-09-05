@@ -168,6 +168,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
     <div>
       <h1>Mi Malla</h1>
       <p class="subtitle">Ingeniería Civil Industrial · UDP</p>
+      <p class="subtitle" id="versionLabel" style="opacity:.6; font-size:11px;"></p>
     </div>
     <div class="sync-badge" id="syncBadge">Sin sincronizar</div>
   </div>
@@ -227,7 +228,6 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
       <label><input type="radio" name="f_status" value="done"><span>Aprobado</span></label>
     </div>
     <div class="sheet-actions">
-      <button class="btn-secondary" id="btnDeleteCourse" style="color:var(--danger);">Eliminar</button>
       <button class="btn-secondary" id="btnCancelCourse">Cancelar</button>
       <button class="btn-primary" id="btnSaveCourse">Guardar</button>
     </div>
@@ -290,6 +290,7 @@ h1{font-size:20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;}
 </div>
 
 <script>
+const APP_VERSION = 'v1.3';
 const STORAGE_KEY = 'malla-icivil-udp-v3';
 const CONFIG_KEY = 'malla-config-v3';
 const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
@@ -582,7 +583,6 @@ function openCourseSheet(id){
   document.getElementById('f_credits').value = c.credits;
   document.getElementById('f_minCredits').value = c.minCredits || '';
   document.querySelectorAll('input[name="f_status"]').forEach(r=> r.checked = (r.value===c.status));
-  document.getElementById('btnDeleteCourse').style.display = id ? '' : 'none';
   renderPrereqUI(c);
   document.getElementById('courseSheet').classList.add('open');
 }
@@ -613,14 +613,6 @@ function renderPrereqUI(c){
 }
 document.getElementById('btnCancelCourse').onclick = ()=> document.getElementById('courseSheet').classList.remove('open');
 document.getElementById('btnAddCourse').onclick = ()=> openCourseSheet(null);
-document.getElementById('btnDeleteCourse').onclick = ()=>{
-  if(!editingId) return;
-  courses = courses.filter(c=>c.id!==editingId);
-  courses.forEach(c=> c.prereqs = c.prereqs.filter(p=>p!==editingId));
-  scheduleSync();
-  document.getElementById('courseSheet').classList.remove('open');
-  render();
-};
 document.getElementById('btnSaveCourse').onclick = ()=>{
   const name = document.getElementById('f_name').value.trim();
   if(!name) return;
@@ -797,6 +789,7 @@ if('serviceWorker' in navigator){
 }
 
 async function init(){
+  document.getElementById('versionLabel').textContent = APP_VERSION;
   loadLocal();
   render();
   updateSyncBadgeIdle();
