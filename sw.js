@@ -1,4 +1,4 @@
-const CACHE = 'mi-malla-v1';
+const CACHE = 'mi-malla-v2';
 const ASSETS = [
   './',
   './index.html',
